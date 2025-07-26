@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends, UploadFile, File, 
 from typing import List, Optional
 from app.db.repos.listing_repo import ListingRepository
 from app.db.repos.user_repo import UserRepository
+from services.geocoding.geocoding_service import GeocodingService
 import logging
 import uuid
 import json
@@ -59,13 +60,68 @@ async def create_listing(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Parse optional JSON fields
+        # Parse optional JSON fields and geocode location
         location_data = {}
         if location:
             try:
-                location_data = json.loads(location)
+                location_input = json.loads(location)
+                
+                # If location contains an address, geocode it
+                if isinstance(location_input, dict) and 'address' in location_input:
+                    geocoded = GeocodingService.geocode_address(location_input['address'])
+                    if geocoded:
+                        location_data = {
+                            'address': location_input['address'],
+                            'lat': geocoded['lat'],
+                            'lng': geocoded['lng'],
+                            'formatted_address': geocoded['formatted_address'],
+                            'city': geocoded.get('city', ''),
+                            'state': geocoded.get('state', ''),
+                            'country': geocoded.get('country', '')
+                        }
+                    else:
+                        logger.warning(f"Failed to geocode address: {location_input['address']}")
+                        location_data = location_input
+                
+                # If location contains lat/lng coordinates
+                elif isinstance(location_input, dict) and 'lat' in location_input and 'lng' in location_input:
+                    location_data = location_input
+                    # Optionally reverse geocode to get address
+                    if 'address' not in location_data:
+                        reverse_geocoded = GeocodingService.reverse_geocode(
+                            location_input['lat'], location_input['lng']
+                        )
+                        if reverse_geocoded:
+                            location_data.update(reverse_geocoded)
+                
+                # If it's just a zip code, try to geocode it
+                elif zipCode:
+                    geocoded = GeocodingService.get_zip_code_coordinates(zipCode)
+                    if geocoded:
+                        location_data = {
+                            'lat': geocoded['lat'],
+                            'lng': geocoded['lng'],
+                            'formatted_address': geocoded['formatted_address'],
+                            'city': geocoded.get('city', ''),
+                            'state': geocoded.get('state', ''),
+                            'country': geocoded.get('country', '')
+                        }
+                
             except json.JSONDecodeError:
                 raise HTTPException(status_code=400, detail="Invalid location JSON format")
+        
+        # If no location provided but we have a zip code, try to geocode the zip code
+        elif zipCode and not location_data:
+            geocoded = GeocodingService.get_zip_code_coordinates(zipCode)
+            if geocoded:
+                location_data = {
+                    'lat': geocoded['lat'],
+                    'lng': geocoded['lng'],
+                    'formatted_address': geocoded['formatted_address'],
+                    'city': geocoded.get('city', ''),
+                    'state': geocoded.get('state', ''),
+                    'country': geocoded.get('country', '')
+                }
         
         tags_data = []
         if tags:
@@ -386,8 +442,11 @@ async def delete_listing(listing_id: str, user_data: dict):
 
 @router.get("/search/by-location")
 async def search_listings_by_location(
-    zip_code: str = Query(..., description="Zip code to search in"),
-    radius: Optional[int] = Query(None, description="Search radius in miles (future feature)"),
+    zip_code: Optional[str] = Query(None, description="Zip code to search in"),
+    address: Optional[str] = Query(None, description="Address to search near"),
+    lat: Optional[float] = Query(None, description="Latitude for location search"),
+    lng: Optional[float] = Query(None, description="Longitude for location search"),
+    radius: Optional[float] = Query(25.0, description="Search radius in miles"),
     category: Optional[str] = Query(None, description="Filter by category"),
     size: Optional[str] = Query(None, description="Filter by size"),
     condition: Optional[str] = Query(None, description="Filter by condition")
@@ -396,28 +455,75 @@ async def search_listings_by_location(
     Search listings by location with advanced filters.
     
     Query parameters:
-    - zip_code: Required zip code to search in
-    - radius: Search radius in miles (not implemented yet)
+    - zip_code: Zip code to search in
+    - address: Address to search near (will be geocoded)
+    - lat/lng: Exact coordinates to search near
+    - radius: Search radius in miles (default: 25)
     - category: Filter by category
     - size: Filter by size
     - condition: Filter by condition
+    
+    At least one location parameter (zip_code, address, or lat/lng) is required.
     """
     try:
-        # Get listings by zip code
-        listings = ListingRepository.get_listings_by_zip(zip_code, size, category)
+        center_lat = None
+        center_lng = None
         
-        # Additional filtering by condition if specified
+        # Determine search center coordinates
+        if lat is not None and lng is not None:
+            center_lat, center_lng = lat, lng
+        elif address:
+            geocoded = GeocodingService.geocode_address(address)
+            if not geocoded:
+                raise HTTPException(status_code=400, detail=f"Could not geocode address: {address}")
+            center_lat, center_lng = geocoded['lat'], geocoded['lng']
+        elif zip_code:
+            geocoded = GeocodingService.get_zip_code_coordinates(zip_code)
+            if not geocoded:
+                raise HTTPException(status_code=400, detail=f"Could not geocode zip code: {zip_code}")
+            center_lat, center_lng = geocoded['lat'], geocoded['lng']
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail="At least one location parameter (zip_code, address, or lat/lng) is required"
+            )
+        
+        # Get all active listings (we'll need to scan for location-based search)
+        from app.db.dynamodb_utils import DynamoDBUtils
+        all_listings = DynamoDBUtils.scan_items(
+            table_name="Listings",
+            filter_expression="attribute_exists(listingId) AND #status = :status",
+            expression_attribute_names={"#status": "status"},
+            expression_attribute_values={":status": "active"}
+        )
+        
+        # Filter by distance
+        nearby_listings = GeocodingService.filter_listings_by_distance(
+            all_listings, center_lat, center_lng, radius
+        )
+        
+        # Apply additional filters
+        filtered_listings = nearby_listings
+        
+        if category:
+            filtered_listings = [listing for listing in filtered_listings if listing.get("category") == category]
+        
+        if size:
+            filtered_listings = [listing for listing in filtered_listings if listing.get("size") == size]
+        
         if condition:
-            listings = [listing for listing in listings if listing.get("condition") == condition]
-        
-        # Filter active listings only
-        active_listings = [listing for listing in listings if listing.get("status") == "active"]
+            filtered_listings = [listing for listing in filtered_listings if listing.get("condition") == condition]
         
         return {
-            "listings": active_listings,
-            "count": len(active_listings),
+            "listings": filtered_listings,
+            "count": len(filtered_listings),
+            "search_center": {
+                "lat": center_lat,
+                "lng": center_lng
+            },
             "search_criteria": {
                 "zip_code": zip_code,
+                "address": address,
                 "radius": radius,
                 "category": category,
                 "size": size,
@@ -425,9 +531,80 @@ async def search_listings_by_location(
             }
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error searching listings: {e}")
+        logger.error(f"Error searching listings by location: {e}")
         raise HTTPException(status_code=500, detail=f"Error searching listings: {str(e)}")
+
+@router.post("/geocode")
+async def geocode_address(request: dict):
+    """
+    Geocode an address to get latitude/longitude coordinates.
+    
+    Expected payload:
+    {
+        "address": "123 Main St, Seattle, WA"
+    }
+    """
+    try:
+        address = request.get("address")
+        if not address:
+            raise HTTPException(status_code=400, detail="Address is required")
+        
+        geocoded = GeocodingService.geocode_address(address)
+        if not geocoded:
+            raise HTTPException(status_code=404, detail="Could not geocode the provided address")
+        
+        return {
+            "success": True,
+            "result": geocoded
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error geocoding address: {e}")
+        raise HTTPException(status_code=500, detail=f"Error geocoding address: {str(e)}")
+
+@router.post("/reverse-geocode")
+async def reverse_geocode_coordinates(request: dict):
+    """
+    Reverse geocode coordinates to get address information.
+    
+    Expected payload:
+    {
+        "lat": 47.6062,
+        "lng": -122.3321
+    }
+    """
+    try:
+        lat = request.get("lat")
+        lng = request.get("lng")
+        
+        if lat is None or lng is None:
+            raise HTTPException(status_code=400, detail="Both lat and lng are required")
+        
+        try:
+            lat = float(lat)
+            lng = float(lng)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="lat and lng must be valid numbers")
+        
+        reverse_geocoded = GeocodingService.reverse_geocode(lat, lng)
+        if not reverse_geocoded:
+            raise HTTPException(status_code=404, detail="Could not reverse geocode the provided coordinates")
+        
+        return {
+            "success": True,
+            "result": reverse_geocoded
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reverse geocoding coordinates: {e}")
+        raise HTTPException(status_code=500, detail=f"Error reverse geocoding: {str(e)}")
 
 @router.get("/user/{user_id}")
 async def get_user_listings(user_id: str):
