@@ -4,6 +4,8 @@ from typing import List, Optional
 from app.db.repos.swap_repo import SwapRepository
 from app.db.repos.listing_repo import ListingRepository
 from app.db.repos.user_repo import UserRepository
+from app.db.repos.message_repo import MessageRepository
+from app.schemas.messages import SystemMessageEvent
 import logging
 
 logger = logging.getLogger(__name__)
@@ -134,12 +136,16 @@ async def list_swaps(
                 requester_info = UserRepository.get_user_public_profile(swap.get("requesterId"))
                 owner_info = UserRepository.get_user_public_profile(swap.get("ownerId"))
                 
+                # Get message counts
+                message_refs = swap.get("messages", MessageRepository.get_messages_reference(swap.get("swapId")))
+                
                 enriched_swap = {
                     **swap,
                     "requester_listing": requester_listing,
                     "owner_listing": owner_listing,
                     "requester_info": requester_info,
-                    "owner_info": owner_info
+                    "owner_info": owner_info,
+                    "messages": message_refs
                 }
                 enriched_swaps.append(enriched_swap)
                 
@@ -183,12 +189,16 @@ async def get_swap(swap_id: str):
             requester_info = UserRepository.get_user_public_profile(swap.get("requesterId"))
             owner_info = UserRepository.get_user_public_profile(swap.get("ownerId"))
             
+            # Get message counts
+            message_refs = swap.get("messages", MessageRepository.get_messages_reference(swap.get("swapId")))
+            
             enriched_swap = {
                 **swap,
                 "requester_listing": requester_listing,
                 "owner_listing": owner_listing,
                 "requester_info": requester_info,
-                "owner_info": owner_info
+                "owner_info": owner_info,
+                "messages": message_refs
             }
             
             return {"swap": enriched_swap}
@@ -232,10 +242,16 @@ async def update_swap(swap_id: str, update_data: dict):
         valid_statuses = ["pending", "accepted", "rejected", "completed", "cancelled"]
         if "status" in update_data and update_data["status"] not in valid_statuses:
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
             )
         
+        # Get the existing swap before updating for notification purposes
+        existing_swap = SwapRepository.get_swap(swap_id)
+        if not existing_swap:
+            raise HTTPException(status_code=404, detail="Swap not found")
+        
+        # Update the swap - system messages are generated automatically in the repository
         updated_swap = SwapRepository.update_swap_status(swap_id, update_data, user_id)
         if not updated_swap:
             raise HTTPException(
@@ -313,11 +329,15 @@ async def get_pending_swaps(user_id: str):
                 owner_listing = ListingRepository.get_listing(swap.get("ownerListingId"))
                 requester_info = UserRepository.get_user_public_profile(swap.get("requesterId"))
                 
+                # Get message counts
+                message_refs = swap.get("messages", MessageRepository.get_messages_reference(swap.get("swapId")))
+                
                 enriched_swap = {
                     **swap,
                     "requester_listing": requester_listing,
                     "owner_listing": owner_listing,
-                    "requester_info": requester_info
+                    "requester_info": requester_info,
+                    "messages": message_refs
                 }
                 enriched_swaps.append(enriched_swap)
                 
@@ -416,6 +436,7 @@ async def accept_swap(swap_id: str, user_data: dict):
             "meetupDetails": user_data.get("meetupDetails", {})
         }
         
+        # The SwapRepository will automatically create system messages
         updated_swap = SwapRepository.update_swap_status(swap_id, update_data, user_data["userId"])
         if not updated_swap:
             raise HTTPException(
@@ -457,6 +478,7 @@ async def reject_swap(swap_id: str, user_data: dict):
             "message": user_data.get("message", "")
         }
         
+        # The SwapRepository will automatically create system messages
         updated_swap = SwapRepository.update_swap_status(swap_id, update_data, user_data["userId"])
         if not updated_swap:
             raise HTTPException(
@@ -498,6 +520,7 @@ async def complete_swap(swap_id: str, user_data: dict):
             "message": user_data.get("message", "")
         }
         
+        # The SwapRepository will automatically create system messages
         updated_swap = SwapRepository.update_swap_status(swap_id, update_data, user_data["userId"])
         if not updated_swap:
             raise HTTPException(

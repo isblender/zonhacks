@@ -7,6 +7,7 @@ from app.api.routers.users_router import router as users_router
 from app.api.routers.listings_router import router as listings_router
 from app.api.routers.swaps_router import router as swaps_router
 from app.api.routers.uploads_router import router as uploads_router
+from app.api.routers.messages_router import router as messages_router
 
 # Core settings (if needed)
 # from core.config import settings
@@ -32,3 +33,4 @@ app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(listings_router, prefix="/listings", tags=["listings"])
 app.include_router(swaps_router, prefix="/swaps", tags=["swaps"])
 app.include_router(uploads_router, prefix="/uploads", tags=["uploads"])
+app.include_router(messages_router, prefix="/messages", tags=["messages"])

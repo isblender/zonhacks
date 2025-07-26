@@ -1,0 +1,53 @@
+[
+  {
+    "message_id": "msg-123",
+    "swap_id": "test-swap-123",
+    "sender_id": "test-user-456",
+    "recipient_id": "test-user-123",
+    "content": "Hello! Is this item still available?",
+    "timestamp": "2025-07-26T12:34:56.789Z",
+    "is_read": true,
+    "message_type": "user",
+    "event_type": null,
+    "metadata": null
+  },
+  {
+    "message_id": "msg-456",
+    "swap_id": "test-swap-123",
+    "sender_id": "test-user-123",
+    "recipient_id": "test-user-456",
+    "content": "Yes, it's available! Are you interested in swapping?",
+    "timestamp": "2025-07-26T12:38:23.456Z",
+    "is_read": true,
+    "message_type": "user",
+    "event_type": null,
+    "metadata": null
+  },
+  {
+    "message_id": "msg-789",
+    "swap_id": "test-swap-123",
+    "sender_id": "test-user-456",
+    "recipient_id": "test-user-123",
+    "content": "I'd love to swap! I have a similar item in blue.",
+    "timestamp": "2025-07-26T12:45:11.123Z",
+    "is_read": true,
+    "message_type": "user",
+    "event_type": null,
+    "metadata": null
+  },
+  {
+    "message_id": "msg-system-123",
+    "swap_id": "test-swap-123",
+    "sender_id": "SYSTEM",
+    "recipient_id": "test-user-123",
+    "content": "The swap request has been accepted.",
+    "timestamp": "2025-07-26T12:50:00.000Z",
+    "is_read": false,
+    "message_type": "system",
+    "event_type": "swap_accepted",
+    "metadata": {
+      "previous_status": "pending",
+      "new_status": "accepted"
+    }
+  }
+]
