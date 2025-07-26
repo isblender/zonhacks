@@ -303,6 +303,73 @@ class CognitoService:
         query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
         
         return f"https://{settings.cognito_domain}/oauth2/authorize?{query_string}"
+    
+    def exchange_code_for_tokens(self, code: str, redirect_uri: str) -> Dict[str, Any]:
+        """
+        Exchange authorization code for tokens using Cognito token endpoint.
+        
+        Args:
+            code: Authorization code from Cognito callback
+            redirect_uri: Same redirect URI used in authorization request
+            
+        Returns:
+            Dictionary with tokens or error information
+        """
+        try:
+            import requests
+            import base64
+            
+            # Prepare token endpoint URL
+            token_url = f"https://{settings.cognito_domain}/oauth2/token"
+            
+            # Prepare request data
+            data = {
+                'grant_type': 'authorization_code',
+                'client_id': settings.cognito_client_id,
+                'code': code,
+                'redirect_uri': redirect_uri
+            }
+            
+            # Prepare headers
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            
+            # Add client secret if configured
+            if settings.cognito_client_secret:
+                # Use Basic Auth with client_id:client_secret
+                credentials = f"{settings.cognito_client_id}:{settings.cognito_client_secret}"
+                encoded_credentials = base64.b64encode(credentials.encode()).decode()
+                headers['Authorization'] = f"Basic {encoded_credentials}"
+            
+            # Make token request
+            response = requests.post(token_url, data=data, headers=headers)
+            
+            if response.status_code == 200:
+                tokens = response.json()
+                return {
+                    'success': True,
+                    'access_token': tokens.get('access_token'),
+                    'id_token': tokens.get('id_token'),
+                    'refresh_token': tokens.get('refresh_token'),
+                    'expires_in': tokens.get('expires_in'),
+                    'token_type': tokens.get('token_type', 'Bearer')
+                }
+            else:
+                logger.error(f"Token exchange failed: {response.status_code} - {response.text}")
+                return {
+                    'success': False,
+                    'error': 'TOKEN_EXCHANGE_FAILED',
+                    'message': f"Failed to exchange code for tokens: {response.text}"
+                }
+                
+        except Exception as e:
+            logger.error(f"Token exchange error: {e}")
+            return {
+                'success': False,
+                'error': 'TOKEN_EXCHANGE_ERROR',
+                'message': 'Failed to exchange authorization code for tokens'
+            }
 
 
 # Global Cognito service instance
