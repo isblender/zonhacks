@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     presigned_url_expiration: int = Field(default=900, env="PRESIGNED_URL_EXPIRATION")  # 15 minutes
     
     # Application Settings
-    app_name: str = "Clothing Swap Platform"
+    app_name: str = "Swaps"
     debug: bool = Field(default=False, env="DEBUG")
     
     class Config:

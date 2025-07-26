@@ -11,6 +11,7 @@ import {
   Image,
   Badge,
 } from '@chakra-ui/react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ClothingItem {
   id: string;
@@ -27,6 +28,7 @@ interface ClothingItem {
 const Gallery: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const { isDark } = useTheme();
 
   // Mock data - in real app this would come from API
   const clothingItems: ClothingItem[] = [
@@ -117,7 +119,7 @@ const Gallery: React.FC = () => {
       <VStack spacing={6} align="stretch">
         {/* Header */}
         <Box>
-          <Heading size="lg" mb={2}>Clothing Gallery</Heading>
+          <Heading size="lg" mb={2} color={isDark ? 'white' : 'gray.800'}>Clothing Gallery</Heading>
           <Text color="gray.600">Discover and swap amazing clothing items with other users</Text>
         </Box>
 
@@ -128,6 +130,10 @@ const Gallery: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             maxW="300px"
+            bg={isDark ? 'gray.700' : 'white'}
+            borderColor={isDark ? 'gray.600' : 'gray.200'}
+            color={isDark ? 'white' : 'gray.800'}
+            _placeholder={{ color: isDark ? 'gray.400' : 'gray.500' }}
           />
           <HStack spacing={2} wrap="wrap">
             {categories.map(category => (
@@ -135,7 +141,7 @@ const Gallery: React.FC = () => {
                 key={category}
                 size="sm"
                 variant={selectedCategory === category ? 'solid' : 'outline'}
-                colorScheme="green"
+                colorScheme="gray"
                 onClick={() => setSelectedCategory(category)}
               >
                 {category}
@@ -149,12 +155,14 @@ const Gallery: React.FC = () => {
           {filteredItems.map(item => (
             <Box
               key={item.id}
-              bg="white"
+              bg={isDark ? 'gray.800' : 'white'}
               borderRadius="lg"
               boxShadow="md"
               overflow="hidden"
               transition="transform 0.2s"
               _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
+              border={isDark ? '1px solid' : 'none'}
+              borderColor={isDark ? 'gray.600' : 'transparent'}
             >
               <Image
                 src={item.imageUrl}
@@ -166,19 +174,19 @@ const Gallery: React.FC = () => {
               <Box p={4}>
                 <VStack align="start" spacing={2}>
                   <HStack justify="space-between" w="full">
-                    <Text fontWeight="bold" fontSize="lg">{item.title}</Text>
-                    <Badge colorScheme="green">{item.size}</Badge>
+                    <Text fontWeight="bold" fontSize="lg" color={isDark ? 'white' : 'gray.800'}>{item.title}</Text>
+                    <Badge colorScheme="gray">{item.size}</Badge>
                   </HStack>
                   <Text color="gray.600" fontSize="sm" lineHeight="1.4">
                     {item.description}
                   </Text>
                   <HStack justify="space-between" w="full">
-                    <Badge colorScheme="green">{item.condition}</Badge>
+                    <Badge colorScheme="gray">{item.condition}</Badge>
                     <HStack spacing={1}>
                       <Box
                         w="24px"
                         h="24px"
-                        bg="green.500"
+                        bg="gray.500"
                         borderRadius="full"
                         display="flex"
                         alignItems="center"
@@ -193,7 +201,7 @@ const Gallery: React.FC = () => {
                     </HStack>
                   </HStack>
                   <Button
-                    colorScheme="green"
+                    colorScheme="gray"
                     size="sm"
                     w="full"
                     onClick={() => handleSwapRequest(item)}

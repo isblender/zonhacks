@@ -15,6 +15,9 @@ import Gallery from './pages/Gallery';
 import SwapRequests from './pages/SwapRequests';
 import Leaderboard from './pages/Leaderboard';
 import Login from './pages/Login';
+import Logo from './components/Logo';
+import ThemeToggle from './components/ThemeToggle';
+import { useTheme } from './contexts/ThemeContext';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -24,6 +27,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDark } = useTheme();
 
   // Mock user data - in real app this would come from auth context
   const user = {
@@ -46,9 +50,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     <Box
       w={isCollapsed ? '60px' : '280px'}
       h="100vh"
-      bg="gray.50"
+      bg={isDark ? 'gray.800' : 'white'}
       borderRight="1px solid"
-      borderColor="gray.200"
+      borderColor={isDark ? 'gray.600' : 'gray.200'}
       transition="width 0.3s ease"
       position="fixed"
       left={0}
@@ -62,30 +66,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           justify={isCollapsed ? 'center' : 'space-between'}
           align="center"
           borderBottom="1px solid"
-          borderColor="gray.200"
+          borderColor={isDark ? 'gray.600' : 'gray.200'}
         >
           {!isCollapsed && (
-            <Text fontSize="lg" fontWeight="bold" color="green.500">
-              ClothingSwap
-            </Text>
+            <Logo size="md" showText={true} />
           )}
-          <IconButton
-            aria-label="Toggle sidebar"
-            size="sm"
-            variant="ghost"
-            onClick={onToggle}
-          >
-            {isCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-          </IconButton>
+          {isCollapsed && (
+            <Logo size="sm" showText={false} />
+          )}
+          <Flex gap={2}>
+            {!isCollapsed && <ThemeToggle size="sm" />}
+            <IconButton
+              aria-label="Toggle sidebar"
+              size="sm"
+              variant="ghost"
+              onClick={onToggle}
+            >
+              {isCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            </IconButton>
+          </Flex>
         </Flex>
 
         {/* User Profile Section */}
-        <Box p={4} borderBottom="1px solid" borderColor="gray.200">
+        <Box p={4} borderBottom="1px solid" borderColor={isDark ? 'gray.600' : 'gray.200'}>
           <VStack spacing={3} align={isCollapsed ? 'center' : 'start'}>
             <Box
               w={isCollapsed ? '32px' : '48px'}
               h={isCollapsed ? '32px' : '48px'}
-              bg="green.500"
+              bg="gray.500"
               borderRadius="full"
               display="flex"
               alignItems="center"
@@ -97,13 +105,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             </Box>
             {!isCollapsed && (
               <VStack spacing={1} align="start">
-                <Text fontWeight="semibold" fontSize="sm">
+                <Text fontWeight="semibold" fontSize="sm" color={isDark ? 'white' : 'gray.800'}>
                   {user.name}
                 </Text>
                 <Text fontSize="xs" color="gray.500">
                   {user.email}
                 </Text>
-                <Text fontSize="xs" color="green.500">
+                <Text fontSize="xs" color="gray.500">
                   {user.swapCount} swaps completed
                 </Text>
               </VStack>
@@ -117,7 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             <Button
               key={item.path}
               variant={location.pathname === item.path ? 'solid' : 'ghost'}
-              colorScheme={location.pathname === item.path ? 'green' : 'gray'}
+              colorScheme="gray"
               justifyContent={isCollapsed ? 'center' : 'flex-start'}
               onClick={() => handleNavigation(item.path)}
               size="md"
@@ -131,7 +139,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         </VStack>
 
         {/* Logout Button */}
-        <Box p={2} borderTop="1px solid" borderColor="gray.200">
+        <Box p={2} borderTop="1px solid" borderColor={isDark ? 'gray.600' : 'gray.200'}>
           <Button
             variant="ghost"
             colorScheme="red"
@@ -151,6 +159,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const location = useLocation();
+  const { isDark } = useTheme();
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -160,7 +169,7 @@ const App: React.FC = () => {
   const showSidebar = location.pathname !== '/login';
 
   return (
-    <Flex h="100vh">
+    <Flex h="100vh" bg={isDark ? 'gray.900' : 'gray.50'}>
       {showSidebar && (
         <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
       )}
@@ -170,6 +179,7 @@ const App: React.FC = () => {
         ml={showSidebar ? (isSidebarCollapsed ? '60px' : '280px') : 0}
         transition="margin-left 0.3s ease"
         overflow="auto"
+        bg={isDark ? 'gray.900' : 'gray.50'}
       >
         <Routes>
           <Route path="/login" element={<Login />} />

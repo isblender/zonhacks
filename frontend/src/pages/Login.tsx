@@ -7,8 +7,12 @@ import {
   Input,
   Button,
   Heading,
+  Flex,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo';
+import ThemeToggle from '../components/ThemeToggle';
+import { useTheme } from '../contexts/ThemeContext';
 
 const Login: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,6 +22,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { isDark } = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,22 +63,27 @@ const Login: React.FC = () => {
       display="flex"
       alignItems="center"
       justifyContent="center"
-      bg="gray.50"
+      bg={isDark ? 'gray.900' : 'gray.50'}
       p={4}
+      position="relative"
     >
+      <Box position="absolute" top={4} right={4}>
+        <ThemeToggle />
+      </Box>
+      
       <Box
         maxW="md"
         w="full"
-        bg="white"
+        bg={isDark ? 'gray.800' : 'white'}
         p={8}
         borderRadius="lg"
         boxShadow="lg"
+        border={isDark ? '1px solid' : 'none'}
+        borderColor={isDark ? 'gray.600' : 'transparent'}
       >
         <VStack spacing={6} align="stretch">
           <VStack spacing={2}>
-            <Heading size="lg" color="green.500">
-              ClothingSwap
-            </Heading>
+            <Logo size="lg" showText={true} />
             <Text color="gray.600" textAlign="center">
               {isLogin ? 'Sign in to your account' : 'Create a new account'}
             </Text>
@@ -96,43 +106,55 @@ const Login: React.FC = () => {
           <form onSubmit={handleSubmit}>
             <VStack spacing={4}>
               {!isLogin && (
-                <Box w="full">
-                  <Text mb={2} fontWeight="medium">Full Name</Text>
-                  <Input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your full name"
-                    required
-                  />
-                </Box>
+              <Box w="full">
+                <Text mb={2} fontWeight="medium" color={isDark ? 'white' : 'gray.800'}>Full Name</Text>
+                <Input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your full name"
+                  required
+                  bg={isDark ? 'gray.700' : 'white'}
+                  borderColor={isDark ? 'gray.600' : 'gray.200'}
+                  color={isDark ? 'white' : 'gray.800'}
+                  _placeholder={{ color: isDark ? 'gray.400' : 'gray.500' }}
+                />
+              </Box>
               )}
 
               <Box w="full">
-                <Text mb={2} fontWeight="medium">Email</Text>
+                <Text mb={2} fontWeight="medium" color={isDark ? 'white' : 'gray.800'}>Email</Text>
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
+                  bg={isDark ? 'gray.700' : 'white'}
+                  borderColor={isDark ? 'gray.600' : 'gray.200'}
+                  color={isDark ? 'white' : 'gray.800'}
+                  _placeholder={{ color: isDark ? 'gray.400' : 'gray.500' }}
                 />
               </Box>
 
               <Box w="full">
-                <Text mb={2} fontWeight="medium">Password</Text>
+                <Text mb={2} fontWeight="medium" color={isDark ? 'white' : 'gray.800'}>Password</Text>
                 <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
+                  bg={isDark ? 'gray.700' : 'white'}
+                  borderColor={isDark ? 'gray.600' : 'gray.200'}
+                  color={isDark ? 'white' : 'gray.800'}
+                  _placeholder={{ color: isDark ? 'gray.400' : 'gray.500' }}
                 />
               </Box>
 
               <Button
                 type="submit"
-                colorScheme="green"
+                colorScheme="gray"
                 size="lg"
                 w="full"
                 isLoading={isLoading}
@@ -151,7 +173,7 @@ const Login: React.FC = () => {
               {isLogin ? "Don't have an account?" : 'Already have an account?'}
             </Text>
             <Text
-              color="green.500"
+              color="gray.500"
               fontWeight="semibold"
               onClick={() => setIsLogin(!isLogin)}
               cursor="pointer"
