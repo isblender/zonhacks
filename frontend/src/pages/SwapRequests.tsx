@@ -9,6 +9,7 @@ import {
   Badge,
   Image,
 } from '@chakra-ui/react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SwapRequest {
   id: string;
@@ -31,6 +32,7 @@ interface SwapRequest {
 
 const SwapRequests: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'completed'>('incoming');
+  const { isDark } = useTheme();
   const [requests, setRequests] = useState<SwapRequest[]>([
     {
       id: '1',
@@ -144,12 +146,14 @@ const SwapRequests: React.FC = () => {
     showActions = false 
   }) => (
     <Box
-      bg="white"
-      p={4}
+      bg={isDark ? 'gray.800' : 'white'}
+      p={6}
       borderRadius="lg"
       boxShadow="md"
       border="1px solid"
-      borderColor="gray.200"
+      borderColor={isDark ? 'gray.600' : 'gray.200'}
+      w="100%"
+      maxW="none"
     >
       <VStack spacing={4} align="stretch">
         <HStack justify="space-between">
@@ -161,53 +165,53 @@ const SwapRequests: React.FC = () => {
           </Badge>
         </HStack>
 
-        <HStack spacing={4} align="center">
+        <HStack spacing={8} align="center" w="100%">
           {/* Requested Item */}
-          <VStack spacing={2} flex={1}>
-            <Text fontSize="sm" fontWeight="medium" color="gray.600">
+          <VStack spacing={3} flex={1} minW="0">
+            <Text fontSize="md" fontWeight="medium" color="gray.600">
               Requested
             </Text>
             <Image
               src={request.itemRequested.imageUrl}
               alt={request.itemRequested.title}
-              w="80px"
-              h="80px"
+              w="120px"
+              h="120px"
               objectFit="cover"
-              borderRadius="md"
+              borderRadius="lg"
             />
             <VStack spacing={1}>
-              <Text fontSize="sm" fontWeight="bold" textAlign="center">
+              <Text fontSize="lg" fontWeight="bold" textAlign="center" color={isDark ? 'white' : 'gray.800'}>
                 {request.itemRequested.title}
               </Text>
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize="sm" color="gray.500">
                 by {request.itemRequested.owner}
               </Text>
             </VStack>
           </VStack>
 
           {/* Arrow */}
-          <Box color="gray.400" fontSize="xl">
+          <Box color="gray.400" fontSize="3xl" px={4}>
             ↔️
           </Box>
 
           {/* Offered Item */}
-          <VStack spacing={2} flex={1}>
-            <Text fontSize="sm" fontWeight="medium" color="gray.600">
+          <VStack spacing={3} flex={1} minW="0">
+            <Text fontSize="md" fontWeight="medium" color="gray.600">
               Offered
             </Text>
             <Image
               src={request.itemOffered.imageUrl}
               alt={request.itemOffered.title}
-              w="80px"
-              h="80px"
+              w="120px"
+              h="120px"
               objectFit="cover"
-              borderRadius="md"
+              borderRadius="lg"
             />
             <VStack spacing={1}>
-              <Text fontSize="sm" fontWeight="bold" textAlign="center">
+              <Text fontSize="lg" fontWeight="bold" textAlign="center" color={isDark ? 'white' : 'gray.800'}>
                 {request.itemOffered.title}
               </Text>
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize="sm" color="gray.500">
                 by {request.itemOffered.owner}
               </Text>
             </VStack>
@@ -215,8 +219,8 @@ const SwapRequests: React.FC = () => {
         </HStack>
 
         {request.message && (
-          <Box bg="gray.50" p={3} borderRadius="md">
-            <Text fontSize="sm" color="gray.700">
+          <Box bg={isDark ? 'gray.700' : 'gray.50'} p={4} borderRadius="lg" w="100%">
+            <Text fontSize="md" color={isDark ? 'gray.300' : 'gray.700'}>
               "{request.message}"
             </Text>
           </Box>
@@ -225,7 +229,7 @@ const SwapRequests: React.FC = () => {
         {showActions && request.status === 'pending' && (
           <HStack spacing={2}>
             <Button
-              colorScheme="green"
+              colorScheme="gray"
               size="sm"
               flex={1}
               onClick={() => handleAcceptRequest(request.id)}
@@ -248,64 +252,81 @@ const SwapRequests: React.FC = () => {
   );
 
   return (
-    <Box p={6}>
-      <VStack spacing={6} align="stretch">
-        <Box>
-          <Heading size="lg" mb={2}>Swap Requests</Heading>
+    <Box 
+      w="100%"
+      h="100vh"
+      p={0}
+      overflow="auto"
+      bg={isDark ? 'gray.900' : 'gray.50'}
+      position="relative"
+    >
+      <VStack spacing={6} align="stretch" p={0} w="100%" minH="100%">
+        <Box px={2} pt={6}>
+          <Heading size="lg" mb={2} color={isDark ? 'white' : 'gray.800'}>Swap Requests</Heading>
           <Text color="gray.600">Manage your incoming and outgoing swap requests</Text>
         </Box>
 
         {/* Custom Tab Navigation */}
-        <HStack spacing={2} bg="gray.100" p={1} borderRadius="lg">
-          <Button
-            size="sm"
-            variant={activeTab === 'incoming' ? 'solid' : 'ghost'}
-            colorScheme="green"
-            onClick={() => setActiveTab('incoming')}
-            flex={1}
-          >
-            Incoming ({incomingRequests.length})
-          </Button>
-          <Button
-            size="sm"
-            variant={activeTab === 'outgoing' ? 'solid' : 'ghost'}
-            colorScheme="green"
-            onClick={() => setActiveTab('outgoing')}
-            flex={1}
-          >
-            Outgoing ({outgoingRequests.length})
-          </Button>
-          <Button
-            size="sm"
-            variant={activeTab === 'completed' ? 'solid' : 'ghost'}
-            colorScheme="green"
-            onClick={() => setActiveTab('completed')}
-            flex={1}
-          >
-            Completed ({completedSwaps.length})
-          </Button>
-        </HStack>
+        <Box px={2}>
+          <HStack spacing={2} bg={isDark ? 'gray.700' : 'gray.100'} p={1} borderRadius="lg">
+            <Button
+              size="sm"
+              variant={activeTab === 'incoming' ? 'solid' : 'ghost'}
+              colorScheme="gray"
+              bg={activeTab === 'incoming' ? (isDark ? 'gray.600' : 'gray.300') : 'transparent'}
+              _hover={{ bg: activeTab === 'incoming' ? (isDark ? 'gray.500' : 'gray.400') : (isDark ? 'gray.600' : 'gray.200') }}
+              onClick={() => setActiveTab('incoming')}
+              flex={1}
+            >
+              Incoming ({incomingRequests.length})
+            </Button>
+            <Button
+              size="sm"
+              variant={activeTab === 'outgoing' ? 'solid' : 'ghost'}
+              colorScheme="gray"
+              bg={activeTab === 'outgoing' ? (isDark ? 'gray.600' : 'gray.300') : 'transparent'}
+              _hover={{ bg: activeTab === 'outgoing' ? (isDark ? 'gray.500' : 'gray.400') : (isDark ? 'gray.600' : 'gray.200') }}
+              onClick={() => setActiveTab('outgoing')}
+              flex={1}
+            >
+              Outgoing ({outgoingRequests.length})
+            </Button>
+            <Button
+              size="sm"
+              variant={activeTab === 'completed' ? 'solid' : 'ghost'}
+              colorScheme="gray"
+              bg={activeTab === 'completed' ? (isDark ? 'gray.600' : 'gray.300') : 'transparent'}
+              _hover={{ bg: activeTab === 'completed' ? (isDark ? 'gray.500' : 'gray.400') : (isDark ? 'gray.600' : 'gray.200') }}
+              onClick={() => setActiveTab('completed')}
+              flex={1}
+            >
+              Completed ({completedSwaps.length})
+            </Button>
+          </HStack>
+        </Box>
 
         {/* Content */}
-        <VStack spacing={4} align="stretch">
-          {getCurrentRequests().length > 0 ? (
-            getCurrentRequests().map(request => (
-              <SwapRequestCard
-                key={request.id}
-                request={request}
-                showActions={activeTab === 'incoming'}
-              />
-            ))
-          ) : (
-            <Box textAlign="center" py={8}>
-              <Text color="gray.500">
-                {activeTab === 'incoming' && 'No incoming requests at the moment.'}
-                {activeTab === 'outgoing' && "You haven't made any swap requests yet."}
-                {activeTab === 'completed' && 'No completed swaps yet.'}
-              </Text>
-            </Box>
-          )}
-        </VStack>
+        <Box w="100%" maxW="none" px={2} pb={6} flex={1}>
+          <VStack spacing={4} align="stretch">
+            {getCurrentRequests().length > 0 ? (
+              getCurrentRequests().map(request => (
+                <SwapRequestCard
+                  key={request.id}
+                  request={request}
+                  showActions={activeTab === 'incoming'}
+                />
+              ))
+            ) : (
+              <Box textAlign="center" py={8}>
+                <Text color="gray.500">
+                  {activeTab === 'incoming' && 'No incoming requests at the moment.'}
+                  {activeTab === 'outgoing' && "You haven't made any swap requests yet."}
+                  {activeTab === 'completed' && 'No completed swaps yet.'}
+                </Text>
+              </Box>
+            )}
+          </VStack>
+        </Box>
       </VStack>
     </Box>
   );

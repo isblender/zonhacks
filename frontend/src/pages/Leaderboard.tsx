@@ -8,6 +8,7 @@ import {
   Badge,
   SimpleGrid,
 } from '@chakra-ui/react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface LeaderboardUser {
   id: string;
@@ -19,6 +20,8 @@ interface LeaderboardUser {
 }
 
 const Leaderboard: React.FC = () => {
+  const { isDark } = useTheme();
+  
   // Mock data - in real app this would come from API
   const users: LeaderboardUser[] = [
     {
@@ -129,12 +132,12 @@ const Leaderboard: React.FC = () => {
     rank 
   }) => (
     <Box
-      bg="white"
+      bg={isDark ? 'gray.800' : 'white'}
       p={4}
       borderRadius="lg"
       boxShadow="md"
       border="1px solid"
-      borderColor="gray.200"
+      borderColor={isDark ? 'gray.600' : 'gray.200'}
       position="relative"
       _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
       transition="all 0.2s"
@@ -165,7 +168,7 @@ const Leaderboard: React.FC = () => {
           <Box
             w="48px"
             h="48px"
-            bg="green.500"
+            bg="gray.500"
             borderRadius="full"
             display="flex"
             alignItems="center"
@@ -179,7 +182,7 @@ const Leaderboard: React.FC = () => {
 
           {/* User Info */}
           <VStack align="start" spacing={1} flex={1}>
-            <Text fontWeight="bold" fontSize="lg">
+            <Text fontWeight="bold" fontSize="lg" color={isDark ? 'white' : 'gray.800'}>
               {user.name}
             </Text>
             <Text fontSize="sm" color="gray.500">
@@ -189,7 +192,7 @@ const Leaderboard: React.FC = () => {
 
           {/* Swap Count */}
           <VStack align="center" spacing={1}>
-            <Text fontSize="2xl" fontWeight="bold" color="green.500">
+            <Text fontSize="2xl" fontWeight="bold" color="gray.500">
               {user.swapCount}
             </Text>
             <Text fontSize="xs" color="gray.500" textAlign="center">
@@ -206,7 +209,7 @@ const Leaderboard: React.FC = () => {
             </Text>
             <HStack spacing={1} wrap="wrap">
               {user.recentSwaps.slice(0, 3).map((item, index) => (
-                <Badge key={index} colorScheme="green" fontSize="xs">
+                <Badge key={index} colorScheme="gray" fontSize="xs">
                   {item}
                 </Badge>
               ))}
@@ -232,20 +235,22 @@ const Leaderboard: React.FC = () => {
       <VStack spacing={6} align="stretch">
         {/* Header */}
         <Box>
-          <Heading size="lg" mb={2}>Leaderboard</Heading>
+          <Heading size="lg" mb={2} color={isDark ? 'white' : 'gray.800'}>Leaderboard</Heading>
           <Text color="gray.600">See who's leading the clothing swap community!</Text>
         </Box>
 
         {/* Stats Overview */}
         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
           <Box
-            bg="white"
+            bg={isDark ? 'gray.800' : 'white'}
             p={4}
             borderRadius="lg"
             boxShadow="md"
             textAlign="center"
+            border={isDark ? '1px solid' : 'none'}
+            borderColor={isDark ? 'gray.600' : 'transparent'}
           >
-            <Text fontSize="2xl" fontWeight="bold" color="green.500">
+            <Text fontSize="2xl" fontWeight="bold" color="gray.500">
               {totalSwaps}
             </Text>
             <Text fontSize="sm" color="gray.600">
@@ -253,13 +258,15 @@ const Leaderboard: React.FC = () => {
             </Text>
           </Box>
           <Box
-            bg="white"
+            bg={isDark ? 'gray.800' : 'white'}
             p={4}
             borderRadius="lg"
             boxShadow="md"
             textAlign="center"
+            border={isDark ? '1px solid' : 'none'}
+            borderColor={isDark ? 'gray.600' : 'transparent'}
           >
-            <Text fontSize="2xl" fontWeight="bold" color="green.500">
+            <Text fontSize="2xl" fontWeight="bold" color="gray.500">
               {averageSwaps}
             </Text>
             <Text fontSize="sm" color="gray.600">
@@ -267,11 +274,13 @@ const Leaderboard: React.FC = () => {
             </Text>
           </Box>
           <Box
-            bg="white"
+            bg={isDark ? 'gray.800' : 'white'}
             p={4}
             borderRadius="lg"
             boxShadow="md"
             textAlign="center"
+            border={isDark ? '1px solid' : 'none'}
+            borderColor={isDark ? 'gray.600' : 'transparent'}
           >
             <Text fontSize="2xl" fontWeight="bold" color="purple.500">
               {users.length}
@@ -284,7 +293,7 @@ const Leaderboard: React.FC = () => {
 
         {/* Top 3 Highlight */}
         <Box>
-          <Heading size="md" mb={4}>🏆 Top Swappers</Heading>
+          <Heading size="md" mb={4} color={isDark ? 'white' : 'gray.800'}>🏆 Top Swappers</Heading>
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
             {sortedUsers.slice(0, 3).map((user, index) => (
               <LeaderboardCard
@@ -298,7 +307,7 @@ const Leaderboard: React.FC = () => {
 
         {/* Full Leaderboard */}
         <Box>
-          <Heading size="md" mb={4}>Full Rankings</Heading>
+          <Heading size="md" mb={4} color={isDark ? 'white' : 'gray.800'}>Full Rankings</Heading>
           <VStack spacing={3} align="stretch">
             {sortedUsers.map((user, index) => (
               <LeaderboardCard
