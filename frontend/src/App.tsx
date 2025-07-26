@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Flex,
@@ -20,13 +20,16 @@ import Logo from './components/Logo';
 import ThemeToggle from './components/ThemeToggle';
 import { useTheme } from './contexts/ThemeContext';
 import { useAuth } from './contexts/AuthContext';
+import UnreadBadge from './components/messaging/UnreadBadge';
+import messageService from './services/messageService';
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  unreadMessageCount: number;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, unreadMessageCount }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark } = useTheme();
@@ -41,7 +44,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
   const menuItems = [
     { label: 'Gallery', path: '/gallery', icon: '🏪' },
-    { label: 'Swap Requests', path: '/swap-requests', icon: '🔄' },
+    { 
+      label: 'Swap Requests', 
+      path: '/swap-requests', 
+      icon: '🔄',
+      showBadge: unreadMessageCount > 0,
+      badgeCount: unreadMessageCount
+    },
     { label: 'Leaderboard', path: '/leaderboard', icon: '🏆' },
   ];
 
@@ -134,9 +143,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               size="md"
               w="full"
               px={isCollapsed ? 2 : 4}
+              position="relative"
             >
               <Text mr={isCollapsed ? 0 : 2}>{item.icon}</Text>
               {!isCollapsed && item.label}
+              {item.showBadge && (
+                <Box 
+                  position="absolute" 
+                  top="0" 
+                  right="0" 
+                  transform="translate(30%, -30%)"
+                >
+                  <UnreadBadge count={item.badgeCount} size="sm" />
+                </Box>
+              )}
             </Button>
           ))}
         </VStack>
@@ -164,8 +184,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
 const App: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const location = useLocation();
   const { isDark } = useTheme();
+
+  // Mock current user - would come from auth context in a real app
+  const currentUserId = 'user123';
+
+  useEffect(() => {
+    // Fetch unread message counts for the current user
+    const fetchUnreadMessageCount = async () => {
+      try {
+        const unreadData = await messageService.getUnreadMessageCount(currentUserId);
+        setUnreadMessageCount(unreadData.count);
+      } catch (error) {
+        console.error('Error fetching unread message count:', error);
+      }
+    };
+    
+    fetchUnreadMessageCount();
+    
+    // Refresh unread count every minute
+    const intervalId = setInterval(fetchUnreadMessageCount, 60000);
+    return () => clearInterval(intervalId);
+  }, [currentUserId]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -177,7 +219,11 @@ const App: React.FC = () => {
   return (
     <Flex h="100vh" bg={isDark ? 'gray.900' : 'gray.50'}>
       {showSidebar && (
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
+        <Sidebar 
+          isCollapsed={isSidebarCollapsed} 
+          onToggle={toggleSidebar} 
+          unreadMessageCount={unreadMessageCount}
+        />
       )}
       
       <Box

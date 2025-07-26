@@ -1,8 +1,10 @@
-# backend/app/db/repositories/swap_repo.py
+# backend/app/db/repos/swap_repo.py
 from app.db.dynamodb_client import dynamodb
+from app.db.repos.message_repo import MessageRepository
+from app.schemas.messages import SystemMessageEvent
 from datetime import datetime
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Any
 
 class SwapRepository:
     TABLE_NAME = "Swaps"
@@ -97,6 +99,11 @@ class SwapRepository:
         update_expression = "SET updatedAt = :timestamp"
         expression_values = {":timestamp": timestamp}
         
+        # Track status change for system messages
+        previous_status = existing.get("status")
+        new_status = data.get("status", previous_status)
+        status_changed = "status" in data and previous_status != new_status
+        
         # Add fields to update
         if "status" in data:
             update_expression += ", #status = :status"
@@ -124,7 +131,79 @@ class SwapRepository:
         }
         
         response = table.update_item(**update_params)
-        return response.get("Attributes")
+        updated_swap = response.get("Attributes")
+        
+        # Generate system messages for status changes
+        if status_changed and updated_swap:
+            cls._create_status_change_messages(
+                swap_id=swap_id,
+                previous_status=previous_status,
+                new_status=new_status,
+                requester_id=updated_swap.get("requesterId"),
+                owner_id=updated_swap.get("ownerId"),
+                actor_id=user_id,
+                timestamp=timestamp
+            )
+            
+            # Also include message references in response
+            message_refs = MessageRepository.get_messages_reference(swap_id)
+            if message_refs:
+                updated_swap["messages"] = message_refs
+        
+        return updated_swap
+    
+    @classmethod
+    def _create_status_change_messages(
+        cls,
+        swap_id: str,
+        previous_status: str,
+        new_status: str,
+        requester_id: str,
+        owner_id: str,
+        actor_id: str,
+        timestamp: str
+    ) -> None:
+        """Create system messages for swap status changes"""
+        # Both participants should receive the system message
+        recipient_ids = [requester_id, owner_id]
+        
+        # Determine the event type and message content based on status change
+        event_type = None
+        content = ""
+        metadata = {
+            "previous_status": previous_status,
+            "new_status": new_status,
+            "actor_id": actor_id,
+            "timestamp": timestamp
+        }
+        
+        if new_status == "accepted":
+            event_type = SystemMessageEvent.SWAP_ACCEPTED
+            actor = "owner" if actor_id == owner_id else "requester"
+            content = f"Swap request has been accepted! You can now coordinate the meetup details."
+            
+        elif new_status == "rejected":
+            event_type = SystemMessageEvent.SWAP_REJECTED
+            actor = "owner" if actor_id == owner_id else "requester"
+            content = f"Swap request has been rejected."
+            
+        elif new_status == "completed":
+            event_type = SystemMessageEvent.SWAP_COMPLETED
+            content = f"Swap has been marked as completed! Thank you for using our platform."
+            
+        elif new_status == "cancelled":
+            event_type = SystemMessageEvent.SWAP_CANCELLED
+            content = f"Swap has been cancelled."
+        
+        if event_type:
+            # Create system messages for all participants
+            MessageRepository.create_system_message(
+                swap_id=swap_id,
+                event_type=event_type,
+                content=content,
+                recipient_ids=recipient_ids,
+                metadata=metadata
+            )
 
     @classmethod
     def get_swaps_for_listing(cls, listing_id: str) -> List[dict]:
@@ -137,7 +216,19 @@ class SwapRepository:
             ExpressionAttributeValues={":listing_id": listing_id}
         )
         
-        return response.get("Items", [])
+        swaps = response.get("Items", [])
+        
+        # Enrich swaps with message information
+        enriched_swaps = []
+        for swap in swaps:
+            swap_id = swap.get("swapId")
+            if swap_id:
+                message_refs = MessageRepository.get_messages_reference(swap_id)
+                if message_refs:
+                    swap["messages"] = message_refs
+            enriched_swaps.append(swap)
+        
+        return enriched_swaps
 
     @classmethod
     def get_pending_swaps_for_user(cls, user_id: str) -> List[dict]:
@@ -150,7 +241,17 @@ class SwapRepository:
             if swap.get("status") == "pending" and swap.get("ownerId") == user_id
         ]
         
-        return pending_swaps
+        # Enrich swaps with message information
+        enriched_swaps = []
+        for swap in pending_swaps:
+            swap_id = swap.get("swapId")
+            if swap_id:
+                message_refs = MessageRepository.get_messages_reference(swap_id)
+                if message_refs:
+                    swap["messages"] = message_refs
+            enriched_swaps.append(swap)
+        
+        return enriched_swaps
 
     @classmethod
     def delete_swap(cls, swap_id: str, user_id: str) -> bool:
@@ -164,6 +265,20 @@ class SwapRepository:
         
         if existing.get("requesterId") != user_id or existing.get("status") != "pending":
             return False
+        
+        # Create system message about the cancellation
+        recipient_ids = [existing.get("requesterId"), existing.get("ownerId")]
+        MessageRepository.create_system_message(
+            swap_id=swap_id,
+            event_type=SystemMessageEvent.SWAP_CANCELLED,
+            content="Swap request has been deleted by the requester.",
+            recipient_ids=recipient_ids,
+            metadata={
+                "previous_status": existing.get("status"),
+                "actor_id": user_id,
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
+        )
         
         table.delete_item(Key={"swapId": swap_id})
         return True
