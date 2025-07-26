@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   VStack,
@@ -10,8 +10,19 @@ import {
   SimpleGrid,
   Image,
   Badge,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  Alert,
+  AlertIcon,
+  Spinner,
+  Center,
 } from '@chakra-ui/react';
 import { useTheme } from '../contexts/ThemeContext';
+import LocationSearch from '../components/LocationSearch';
+import { LocationService, LocationData } from '../services/locationService';
 
 interface ClothingItem {
   id: string;
@@ -28,6 +39,11 @@ interface ClothingItem {
 const Gallery: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [locationSearchResults, setLocationSearchResults] = useState<any[]>([]);
+  const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
+  const [searchRadius, setSearchRadius] = useState(25);
+  const [isLocationSearching, setIsLocationSearching] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const { isDark } = useTheme();
 
   // Mock data - in real app this would come from API
@@ -114,6 +130,91 @@ const Gallery: React.FC = () => {
     alert(`Swap request sent for ${item.title}!`);
   };
 
+  const handleLocationChange = (location: LocationData | null, radius: number) => {
+    setCurrentLocation(location);
+    setSearchRadius(radius);
+    setLocationError(null);
+  };
+
+  const handleLocationSearch = async () => {
+    if (!currentLocation) return;
+
+    setIsLocationSearching(true);
+    setLocationError(null);
+
+    try {
+      const results = await LocationService.searchListingsByLocation({
+        lat: currentLocation.lat,
+        lng: currentLocation.lng,
+        radius: searchRadius,
+        category: selectedCategory !== 'All' ? selectedCategory : undefined,
+      });
+
+      setLocationSearchResults(results.listings || []);
+    } catch (error) {
+      setLocationError(error instanceof Error ? error.message : 'Failed to search listings');
+      setLocationSearchResults([]);
+    } finally {
+      setIsLocationSearching(false);
+    }
+  };
+
+  const renderListingItem = (item: any, showDistance = false) => (
+    <Box
+      key={item.listingId || item.id}
+      bg={isDark ? 'gray.800' : 'white'}
+      borderRadius="lg"
+      boxShadow="md"
+      overflow="hidden"
+      transition="transform 0.2s"
+      _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
+      border={isDark ? '1px solid' : 'none'}
+      borderColor={isDark ? 'gray.600' : 'transparent'}
+    >
+      <Image
+        src={item.images?.[0]?.url || item.imageUrl || 'https://via.placeholder.com/300x200?text=No+Image'}
+        alt={item.title}
+        h="200px"
+        w="full"
+        objectFit="cover"
+      />
+      <Box p={4}>
+        <VStack align="start" spacing={2}>
+          <HStack justify="space-between" w="full">
+            <Text fontWeight="bold" fontSize="lg" color={isDark ? 'white' : 'gray.800'}>
+              {item.title}
+            </Text>
+            <Badge colorScheme="gray">{item.size}</Badge>
+          </HStack>
+          <Text color="gray.600" fontSize="sm" lineHeight="1.4">
+            {item.description}
+          </Text>
+          <HStack justify="space-between" w="full">
+            <Badge colorScheme="gray">{item.condition}</Badge>
+            {showDistance && item.distance_miles !== undefined && (
+              <Badge colorScheme="blue" variant="subtle">
+                {LocationService.formatDistance(item.distance_miles)}
+              </Badge>
+            )}
+          </HStack>
+          {item.location?.city && item.location?.state && (
+            <Text fontSize="xs" color="gray.500">
+              📍 {item.location.city}, {item.location.state}
+            </Text>
+          )}
+          <Button
+            colorScheme="gray"
+            size="sm"
+            w="full"
+            onClick={() => handleSwapRequest(item)}
+          >
+            Request Swap
+          </Button>
+        </VStack>
+      </Box>
+    </Box>
+  );
+
   return (
     <Box p={6}>
       <VStack spacing={6} align="stretch">
@@ -123,102 +224,153 @@ const Gallery: React.FC = () => {
           <Text color="gray.600">Discover and swap amazing clothing items with other users</Text>
         </Box>
 
-        {/* Search and Filter */}
-        <HStack spacing={4} wrap="wrap">
-          <Input
-            placeholder="Search items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            maxW="300px"
-            bg={isDark ? 'gray.700' : 'white'}
-            borderColor={isDark ? 'gray.600' : 'gray.200'}
-            color={isDark ? 'white' : 'gray.800'}
-            _placeholder={{ color: isDark ? 'gray.400' : 'gray.500' }}
-          />
-          <HStack spacing={2} wrap="wrap">
-            {categories.map(category => (
-              <Button
-                key={category}
-                size="sm"
-                variant={selectedCategory === category ? 'solid' : 'outline'}
-                colorScheme="gray"
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category}
-              </Button>
-            ))}
-          </HStack>
-        </HStack>
+        {/* Tabs for different search modes */}
+        <Tabs colorScheme="blue">
+          <TabList>
+            <Tab>Browse All</Tab>
+            <Tab>Search by Location</Tab>
+          </TabList>
 
-        {/* Items Grid */}
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={6}>
-          {filteredItems.map(item => (
-            <Box
-              key={item.id}
-              bg={isDark ? 'gray.800' : 'white'}
-              borderRadius="lg"
-              boxShadow="md"
-              overflow="hidden"
-              transition="transform 0.2s"
-              _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
-              border={isDark ? '1px solid' : 'none'}
-              borderColor={isDark ? 'gray.600' : 'transparent'}
-            >
-              <Image
-                src={item.imageUrl}
-                alt={item.title}
-                h="200px"
-                w="full"
-                objectFit="cover"
-              />
-              <Box p={4}>
-                <VStack align="start" spacing={2}>
-                  <HStack justify="space-between" w="full">
-                    <Text fontWeight="bold" fontSize="lg" color={isDark ? 'white' : 'gray.800'}>{item.title}</Text>
-                    <Badge colorScheme="gray">{item.size}</Badge>
-                  </HStack>
-                  <Text color="gray.600" fontSize="sm" lineHeight="1.4">
-                    {item.description}
-                  </Text>
-                  <HStack justify="space-between" w="full">
-                    <Badge colorScheme="gray">{item.condition}</Badge>
-                    <HStack spacing={1}>
-                      <Box
-                        w="24px"
-                        h="24px"
-                        bg="gray.500"
-                        borderRadius="full"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        color="white"
-                        fontSize="xs"
-                        fontWeight="bold"
+          <TabPanels>
+            {/* Browse All Tab */}
+            <TabPanel px={0}>
+              <VStack spacing={6} align="stretch">
+                {/* Search and Filter */}
+                <HStack spacing={4} wrap="wrap">
+                  <Input
+                    placeholder="Search items..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    maxW="300px"
+                    bg={isDark ? 'gray.700' : 'white'}
+                    borderColor={isDark ? 'gray.600' : 'gray.200'}
+                    color={isDark ? 'white' : 'gray.800'}
+                    _placeholder={{ color: isDark ? 'gray.400' : 'gray.500' }}
+                  />
+                  <HStack spacing={2} wrap="wrap">
+                    {categories.map(category => (
+                      <Button
+                        key={category}
+                        size="sm"
+                        variant={selectedCategory === category ? 'solid' : 'outline'}
+                        colorScheme="gray"
+                        onClick={() => setSelectedCategory(category)}
                       >
-                        {item.ownerAvatar}
-                      </Box>
-                      <Text fontSize="xs" color="gray.500">{item.owner}</Text>
-                    </HStack>
+                        {category}
+                      </Button>
+                    ))}
                   </HStack>
-                  <Button
-                    colorScheme="gray"
-                    size="sm"
-                    w="full"
-                    onClick={() => handleSwapRequest(item)}
-                  >
-                    Request Swap
-                  </Button>
-                </VStack>
-              </Box>
-            </Box>
-          ))}
-        </SimpleGrid>
+                </HStack>
 
-        {filteredItems.length === 0 && (
-          <Box textAlign="center" py={8}>
-            <Text color="gray.500">No items found matching your criteria.</Text>
-          </Box>
-        )}
+                {/* Items Grid */}
+                <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={6}>
+                  {filteredItems.map(item => renderListingItem(item, false))}
+                </SimpleGrid>
+
+                {filteredItems.length === 0 && (
+                  <Box textAlign="center" py={8}>
+                    <Text color="gray.500">No items found matching your criteria.</Text>
+                  </Box>
+                )}
+              </VStack>
+            </TabPanel>
+
+            {/* Location Search Tab */}
+            <TabPanel px={0}>
+              <VStack spacing={6} align="stretch">
+                <HStack spacing={6} align="start">
+                  {/* Location Search Component */}
+                  <Box flex="1" maxW="400px">
+                    <LocationSearch
+                      onLocationChange={handleLocationChange}
+                      onSearch={handleLocationSearch}
+                      isLoading={isLocationSearching}
+                    />
+                  </Box>
+
+                  {/* Category Filter for Location Search */}
+                  <Box flex="1">
+                    <Text fontWeight="semibold" mb={3} color={isDark ? 'white' : 'gray.800'}>
+                      Filter by Category
+                    </Text>
+                    <HStack spacing={2} wrap="wrap">
+                      {categories.map(category => (
+                        <Button
+                          key={category}
+                          size="sm"
+                          variant={selectedCategory === category ? 'solid' : 'outline'}
+                          colorScheme="gray"
+                          onClick={() => setSelectedCategory(category)}
+                        >
+                          {category}
+                        </Button>
+                      ))}
+                    </HStack>
+                  </Box>
+                </HStack>
+
+                {/* Location Error */}
+                {locationError && (
+                  <Alert status="error">
+                    <AlertIcon />
+                    {locationError}
+                  </Alert>
+                )}
+
+                {/* Loading State */}
+                {isLocationSearching && (
+                  <Center py={8}>
+                    <VStack spacing={4}>
+                      <Spinner size="lg" color="blue.500" />
+                      <Text color="gray.500">Searching for nearby listings...</Text>
+                    </VStack>
+                  </Center>
+                )}
+
+                {/* Location Search Results */}
+                {!isLocationSearching && locationSearchResults.length > 0 && (
+                  <VStack spacing={4} align="stretch">
+                    <HStack justify="space-between">
+                      <Text fontWeight="semibold" color={isDark ? 'white' : 'gray.800'}>
+                        Found {locationSearchResults.length} listings within {searchRadius} miles
+                      </Text>
+                      {currentLocation && (
+                        <Text fontSize="sm" color="gray.500">
+                          Near {currentLocation.formatted_address || `${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)}`}
+                        </Text>
+                      )}
+                    </HStack>
+
+                    <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={6}>
+                      {locationSearchResults.map(item => renderListingItem(item, true))}
+                    </SimpleGrid>
+                  </VStack>
+                )}
+
+                {/* No Results */}
+                {!isLocationSearching && currentLocation && locationSearchResults.length === 0 && (
+                  <Box textAlign="center" py={8}>
+                    <Text color="gray.500">
+                      No listings found within {searchRadius} miles of your search location.
+                    </Text>
+                    <Text fontSize="sm" color="gray.400" mt={2}>
+                      Try increasing the search radius or searching in a different area.
+                    </Text>
+                  </Box>
+                )}
+
+                {/* Instructions */}
+                {!currentLocation && !isLocationSearching && (
+                  <Box textAlign="center" py={8}>
+                    <Text color="gray.500">
+                      Set your location to find nearby clothing items available for swap.
+                    </Text>
+                  </Box>
+                )}
+              </VStack>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
       </VStack>
     </Box>
   );
