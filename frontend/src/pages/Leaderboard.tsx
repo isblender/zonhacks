@@ -165,7 +165,7 @@ const Leaderboard: React.FC = () => {
           <Box
             w="48px"
             h="48px"
-            bg="blue.500"
+            bg="green.500"
             borderRadius="full"
             display="flex"
             alignItems="center"
@@ -189,7 +189,7 @@ const Leaderboard: React.FC = () => {
 
           {/* Swap Count */}
           <VStack align="center" spacing={1}>
-            <Text fontSize="2xl" fontWeight="bold" color="blue.500">
+            <Text fontSize="2xl" fontWeight="bold" color="green.500">
               {user.swapCount}
             </Text>
             <Text fontSize="xs" color="gray.500" textAlign="center">
@@ -206,7 +206,7 @@ const Leaderboard: React.FC = () => {
             </Text>
             <HStack spacing={1} wrap="wrap">
               {user.recentSwaps.slice(0, 3).map((item, index) => (
-                <Badge key={index} colorScheme="blue" fontSize="xs">
+                <Badge key={index} colorScheme="green" fontSize="xs">
                   {item}
                 </Badge>
               ))}
@@ -245,7 +245,7 @@ const Leaderboard: React.FC = () => {
             boxShadow="md"
             textAlign="center"
           >
-            <Text fontSize="2xl" fontWeight="bold" color="blue.500">
+            <Text fontSize="2xl" fontWeight="bold" color="green.500">
               {totalSwaps}
             </Text>
             <Text fontSize="sm" color="gray.600">

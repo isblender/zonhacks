@@ -65,7 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
           borderColor="gray.200"
         >
           {!isCollapsed && (
-            <Text fontSize="lg" fontWeight="bold" color="blue.500">
+            <Text fontSize="lg" fontWeight="bold" color="green.500">
               ClothingSwap
             </Text>
           )}
@@ -85,7 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             <Box
               w={isCollapsed ? '32px' : '48px'}
               h={isCollapsed ? '32px' : '48px'}
-              bg="blue.500"
+              bg="green.500"
               borderRadius="full"
               display="flex"
               alignItems="center"
@@ -103,7 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 <Text fontSize="xs" color="gray.500">
                   {user.email}
                 </Text>
-                <Text fontSize="xs" color="blue.500">
+                <Text fontSize="xs" color="green.500">
                   {user.swapCount} swaps completed
                 </Text>
               </VStack>
@@ -117,7 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             <Button
               key={item.path}
               variant={location.pathname === item.path ? 'solid' : 'ghost'}
-              colorScheme={location.pathname === item.path ? 'blue' : 'gray'}
+              colorScheme={location.pathname === item.path ? 'green' : 'gray'}
               justifyContent={isCollapsed ? 'center' : 'flex-start'}
               onClick={() => handleNavigation(item.path)}
               size="md"

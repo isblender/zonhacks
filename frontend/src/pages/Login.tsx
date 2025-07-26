@@ -71,7 +71,7 @@ const Login: React.FC = () => {
       >
         <VStack spacing={6} align="stretch">
           <VStack spacing={2}>
-            <Heading size="lg" color="blue.500">
+            <Heading size="lg" color="green.500">
               ClothingSwap
             </Heading>
             <Text color="gray.600" textAlign="center">
@@ -132,7 +132,7 @@ const Login: React.FC = () => {
 
               <Button
                 type="submit"
-                colorScheme="blue"
+                colorScheme="green"
                 size="lg"
                 w="full"
                 isLoading={isLoading}
@@ -151,7 +151,7 @@ const Login: React.FC = () => {
               {isLogin ? "Don't have an account?" : 'Already have an account?'}
             </Text>
             <Text
-              color="blue.500"
+              color="green.500"
               fontWeight="semibold"
               onClick={() => setIsLogin(!isLogin)}
               cursor="pointer"

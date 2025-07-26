@@ -135,7 +135,7 @@ const Gallery: React.FC = () => {
                 key={category}
                 size="sm"
                 variant={selectedCategory === category ? 'solid' : 'outline'}
-                colorScheme="blue"
+                colorScheme="green"
                 onClick={() => setSelectedCategory(category)}
               >
                 {category}
@@ -167,7 +167,7 @@ const Gallery: React.FC = () => {
                 <VStack align="start" spacing={2}>
                   <HStack justify="space-between" w="full">
                     <Text fontWeight="bold" fontSize="lg">{item.title}</Text>
-                    <Badge colorScheme="blue">{item.size}</Badge>
+                    <Badge colorScheme="green">{item.size}</Badge>
                   </HStack>
                   <Text color="gray.600" fontSize="sm" lineHeight="1.4">
                     {item.description}
@@ -178,7 +178,7 @@ const Gallery: React.FC = () => {
                       <Box
                         w="24px"
                         h="24px"
-                        bg="blue.500"
+                        bg="green.500"
                         borderRadius="full"
                         display="flex"
                         alignItems="center"
@@ -193,7 +193,7 @@ const Gallery: React.FC = () => {
                     </HStack>
                   </HStack>
                   <Button
-                    colorScheme="blue"
+                    colorScheme="green"
                     size="sm"
                     w="full"
                     onClick={() => handleSwapRequest(item)}

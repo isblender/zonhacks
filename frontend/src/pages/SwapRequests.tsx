@@ -260,7 +260,7 @@ const SwapRequests: React.FC = () => {
           <Button
             size="sm"
             variant={activeTab === 'incoming' ? 'solid' : 'ghost'}
-            colorScheme="blue"
+            colorScheme="green"
             onClick={() => setActiveTab('incoming')}
             flex={1}
           >
@@ -269,7 +269,7 @@ const SwapRequests: React.FC = () => {
           <Button
             size="sm"
             variant={activeTab === 'outgoing' ? 'solid' : 'ghost'}
-            colorScheme="blue"
+            colorScheme="green"
             onClick={() => setActiveTab('outgoing')}
             flex={1}
           >
@@ -278,7 +278,7 @@ const SwapRequests: React.FC = () => {
           <Button
             size="sm"
             variant={activeTab === 'completed' ? 'solid' : 'ghost'}
-            colorScheme="blue"
+            colorScheme="green"
             onClick={() => setActiveTab('completed')}
             flex={1}
           >
