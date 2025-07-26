@@ -21,6 +21,7 @@ __pycache__/
 *.pyd
 .Python
 *.so
+backend/.env
 
 # Editor directories and files
 .vscode/*

@@ -453,19 +453,19 @@ const SwapRequests: React.FC = () => {
     <Box 
       w="100%"
       h="100vh"
-      p={0}
+      p={6}
       overflow="auto"
       bg={isDark ? 'gray.900' : 'gray.50'}
       position="relative"
     >
-      <VStack spacing={6} align="stretch" p={0} w="100%" minH="100%">
-        <Box px={2} pt={6}>
+      <VStack spacing={6} align="stretch" w="100%" minH="100%">
+        <Box>
           <Heading size="lg" mb={2} color={isDark ? 'white' : 'gray.800'}>Swap Requests</Heading>
           <Text color="gray.600">Manage your incoming and outgoing swap requests</Text>
         </Box>
 
         {/* Custom Tab Navigation */}
-        <Box px={2}>
+        <Box>
           <HStack spacing={2} bg={isDark ? 'gray.700' : 'gray.100'} p={1} borderRadius="lg">
             <Button
               size="sm"
@@ -543,7 +543,7 @@ const SwapRequests: React.FC = () => {
         </Box>
 
         {/* Content */}
-        <Box w="100%" maxW="none" px={2} pb={6} flex={1}>
+        <Box w="100%" maxW="none" flex={1}>
           <VStack spacing={4} align="stretch">
             {getCurrentRequests().length > 0 ? (
               getCurrentRequests().map(request => (
