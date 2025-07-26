@@ -51,7 +51,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true }) => {
         <Text
           fontSize={textSize}
           fontWeight="bold"
-          background="linear-gradient(135deg, #e8261a 0%, #2b4859 100%)"
+          background="#2b4859"
           backgroundClip="text"
           color="transparent"
           letterSpacing="tight"

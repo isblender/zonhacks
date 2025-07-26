@@ -57,7 +57,8 @@ const Login: React.FC = () => {
 
   return (
     <Box
-      minH="100vh"
+      w="100vw"
+      h="100vh"
       display="flex"
       alignItems="center"
       justifyContent="center"
