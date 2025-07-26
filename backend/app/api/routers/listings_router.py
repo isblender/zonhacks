@@ -1,53 +1,173 @@
 # backend/app/api/routers/listings_router.py
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, UploadFile, File, Form
 from typing import List, Optional
 from app.db.repos.listing_repo import ListingRepository
 from app.db.repos.user_repo import UserRepository
 import logging
+import uuid
+import json
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/")
-async def create_listing(listing_data: dict):
+async def create_listing(
+    userId: str = Form(...),
+    title: str = Form(...),
+    description: str = Form(...),
+    category: str = Form(...),
+    size: str = Form(...),
+    condition: str = Form(...),
+    zipCode: str = Form(...),
+    location: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    images: List[UploadFile] = File(default=[])
+):
     """
-    Create a new listing.
+    Create a new listing with direct image upload.
     
-    Expected payload:
-    {
-        "userId": "user123",
-        "title": "Blue Jeans",
-        "description": "Gently used blue jeans in great condition",
-        "category": "pants",
-        "size": "M",
-        "condition": "good",
-        "images": ["image1.jpg", "image2.jpg"],
-        "zipCode": "12345",
-        "location": {
-            "city": "Seattle",
-            "state": "WA"
-        },
-        "tags": ["casual", "denim"]
+    This endpoint accepts multipart/form-data with:
+    - Form fields: userId, title, description, category, size, condition, zipCode
+    - Optional fields: location (JSON string), tags (JSON string)
+    - File uploads: images (multiple files)
+    
+    Frontend usage:
+    const formData = new FormData();
+    formData.append('userId', 'user123');
+    formData.append('title', 'Blue Jeans');
+    formData.append('description', 'Gently used jeans');
+    formData.append('category', 'pants');
+    formData.append('size', 'M');
+    formData.append('condition', 'good');
+    formData.append('zipCode', '12345');
+    formData.append('location', JSON.stringify({city: 'Seattle', state: 'WA'}));
+    formData.append('tags', JSON.stringify(['casual', 'denim']));
+    
+    // Add image files
+    for (const file of imageFiles) {
+        formData.append('images', file);
     }
+    
+    fetch('/listings/', {
+        method: 'POST',
+        body: formData
+    });
     """
     try:
-        # Validate required fields
-        required_fields = ["userId", "title", "description", "category", "size", "condition", "zipCode"]
-        for field in required_fields:
-            if field not in listing_data:
-                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
-        
         # Verify user exists
-        user = UserRepository.get_user(listing_data["userId"])
+        user = UserRepository.get_user(userId)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
+        # Parse optional JSON fields
+        location_data = {}
+        if location:
+            try:
+                location_data = json.loads(location)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="Invalid location JSON format")
+        
+        tags_data = []
+        if tags:
+            try:
+                tags_data = json.loads(tags)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="Invalid tags JSON format")
+        
+        # Upload images to S3
+        uploaded_images = []
+        if images:
+            from services.s3.image_service import ImageService
+            from services.s3.s3_client import s3_client
+            from core.config import settings
+            
+            for image_file in images:
+                try:
+                    # Validate file type
+                    if image_file.content_type not in settings.allowed_image_types:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"Invalid file type: {image_file.content_type}. Allowed types: {', '.join(settings.allowed_image_types)}"
+                        )
+                    
+                    # Read file content
+                    file_content = await image_file.read()
+                    
+                    # Validate file size
+                    file_size = len(file_content)
+                    max_size_bytes = settings.max_image_size_mb * 1024 * 1024
+                    if file_size > max_size_bytes:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"File size {file_size} bytes exceeds maximum allowed size of {max_size_bytes} bytes"
+                        )
+                    
+                    # Generate unique filename
+                    file_extension = image_file.filename.split('.')[-1].lower()
+                    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+                    s3_key = f"images/{unique_filename}"
+                    
+                    # Upload to S3
+                    from io import BytesIO
+                    file_obj = BytesIO(file_content)
+                    
+                    success = s3_client.upload_file(
+                        file_obj=file_obj,
+                        bucket=settings.s3_images_bucket,
+                        key=s3_key,
+                        content_type=image_file.content_type
+                    )
+                    
+                    if not success:
+                        raise HTTPException(
+                            status_code=500, 
+                            detail=f"Failed to upload image: {image_file.filename}"
+                        )
+                    
+                    # Get public URL
+                    image_url = ImageService.get_image_url(s3_key)
+                    
+                    uploaded_images.append({
+                        "key": s3_key,
+                        "url": image_url,
+                        "original_filename": image_file.filename
+                    })
+                    
+                    logger.info(f"Successfully uploaded image: {s3_key}")
+                    
+                except Exception as e:
+                    logger.error(f"Error uploading image {image_file.filename}: {e}")
+                    # Clean up any successfully uploaded images if one fails
+                    for uploaded_image in uploaded_images:
+                        try:
+                            ImageService.delete_image(uploaded_image["key"])
+                        except:
+                            pass
+                    raise HTTPException(
+                        status_code=500, 
+                        detail=f"Failed to upload image {image_file.filename}: {str(e)}"
+                    )
+        
+        # Prepare listing data
+        listing_data = {
+            "title": title,
+            "description": description,
+            "category": category,
+            "size": size,
+            "condition": condition,
+            "zipCode": zipCode,
+            "location": location_data,
+            "tags": tags_data,
+            "images": uploaded_images
+        }
+        
         # Create listing
-        new_listing = ListingRepository.create_listing(listing_data, listing_data["userId"])
+        new_listing = ListingRepository.create_listing(listing_data, userId)
         
         return {
             "message": "Listing created successfully",
-            "listing": new_listing
+            "listing": new_listing,
+            "images_uploaded": len(uploaded_images)
         }
         
     except HTTPException:
@@ -195,7 +315,7 @@ async def update_listing(listing_id: str, listing_data: dict):
 @router.delete("/{listing_id}")
 async def delete_listing(listing_id: str, user_data: dict):
     """
-    Delete a listing.
+    Delete a listing and clean up associated images.
     
     Note: In production, add authentication to ensure user can only delete their own listings.
     
@@ -210,14 +330,53 @@ async def delete_listing(listing_id: str, user_data: dict):
         
         user_id = user_data["userId"]
         
+        # Get listing first to retrieve image keys for cleanup
+        listing = ListingRepository.get_listing(listing_id)
+        if not listing:
+            raise HTTPException(status_code=404, detail="Listing not found")
+        
+        # Verify user owns the listing
+        if listing.get("userId") != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this listing")
+        
+        # Delete the listing from DynamoDB
         success = ListingRepository.delete_listing(listing_id, user_id)
         if not success:
-            raise HTTPException(status_code=404, detail="Listing not found or not authorized to delete")
+            raise HTTPException(status_code=500, detail="Failed to delete listing from database")
         
-        return {
+        # Clean up associated images from S3
+        images = listing.get("images", [])
+        deleted_images = []
+        failed_images = []
+        
+        if images:
+            from services.s3.image_service import ImageService
+            
+            for image in images:
+                image_key = image.get("key") if isinstance(image, dict) else image
+                if image_key:
+                    try:
+                        delete_success = ImageService.delete_image(image_key)
+                        if delete_success:
+                            deleted_images.append(image_key)
+                        else:
+                            failed_images.append(image_key)
+                    except Exception as e:
+                        logger.warning(f"Failed to delete image {image_key}: {e}")
+                        failed_images.append(image_key)
+        
+        response = {
             "message": "Listing deleted successfully",
-            "listing_id": listing_id
+            "listing_id": listing_id,
+            "images_deleted": len(deleted_images),
+            "images_failed": len(failed_images)
         }
+        
+        if failed_images:
+            response["failed_image_cleanup"] = failed_images
+            logger.warning(f"Failed to delete some images for listing {listing_id}: {failed_images}")
+        
+        return response
         
     except HTTPException:
         raise

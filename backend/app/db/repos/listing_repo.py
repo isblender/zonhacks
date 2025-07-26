@@ -23,7 +23,7 @@ class ListingRepository:
             "category": data.get("category"),
             "size": data.get("size"),
             "condition": data.get("condition"),
-            "images": data.get("images", []),
+            "images": data.get("images", []),  # Now contains [{"key": "s3_key", "url": "public_url"}]
             "zipCode": data.get("zipCode"),
             "location": data.get("location", {}),
             "status": "active",
