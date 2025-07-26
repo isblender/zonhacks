@@ -23,6 +23,14 @@ pytest>=7.4.0
 pytest-asyncio>=0.21.0
 httpx>=0.25.0  # For testing FastAPI endpoints
 
-# Security
-python-jose[cryptography]>=3.3.0  # For JWT tokens if needed
-passlib[bcrypt]>=1.7.4  # For password hashing if needed
+# Security and Authentication
+python-jose[cryptography]>=3.3.0  # For JWT tokens
+passlib[bcrypt]>=1.7.4  # For password hashing
+python-multipart>=0.0.6  # For form data handling
+authlib>=1.2.0  # For OAuth and OIDC
+requests>=2.31.0  # For HTTP requests to Cognito
+
+# AWS Cognito
+boto3>=1.34.0  # Already included above
+pyjwt>=2.8.0  # For JWT token handling
+cryptography>=41.0.0  # For JWT verification

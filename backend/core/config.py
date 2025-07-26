@@ -27,9 +27,17 @@ class Settings(BaseSettings):
     )
     presigned_url_expiration: int = Field(default=900, env="PRESIGNED_URL_EXPIRATION")  # 15 minutes
     
+    # AWS Cognito Configuration
+    cognito_user_pool_id: str = Field(default="us-east-1_el7NpxkRe", env="COGNITO_USER_POOL_ID")
+    cognito_client_id: str = Field(default="1pv3uac2h78o33fl7230hi21rt", env="COGNITO_CLIENT_ID")
+    cognito_client_secret: Optional[str] = Field(default=None, env="COGNITO_CLIENT_SECRET")
+    cognito_region: str = Field(default="us-east-1", env="COGNITO_REGION")
+    cognito_domain: Optional[str] = Field(default=None, env="COGNITO_DOMAIN")
+    
     # Application Settings
-    app_name: str = "Swaps"
+    app_name: str = "Clothing Swap Platform"
     debug: bool = Field(default=False, env="DEBUG")
+    frontend_url: str = Field(default="http://localhost:3000", env="FRONTEND_URL")
     
     class Config:
         env_file = ".env"
