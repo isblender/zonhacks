@@ -2,11 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Routers
-from api.v1.routers.auth_router import router as auth_router
-from api.v1.routers.users_router import router as users_router
-from api.v1.routers.listings_router import router as listings_router
-from api.v1.routers.swaps_router import router as swaps_router
-from api.v1.routers.uploads_router import router as uploads_router
+from api.routers.auth_router import router as auth_router
+from api.routers.users_router import router as users_router
+from api.routers.listings_router import router as listings_router
+from api.routers.swaps_router import router as swaps_router
+from api.routers.uploads_router import router as uploads_router
 
 # Core settings (if needed)
 # from core.config import settings
