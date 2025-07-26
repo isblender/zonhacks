@@ -8,7 +8,7 @@ import {
   IconButton,
 } from '@chakra-ui/react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { HamburgerIcon, CloseIcon } from '@chakra-ui/icons';
+import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 
 // Import page components (we'll create these)
 import Gallery from './pages/Gallery';
@@ -75,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             variant="ghost"
             onClick={onToggle}
           >
-            {isCollapsed ? <HamburgerIcon /> : <CloseIcon />}
+            {isCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
           </IconButton>
         </Flex>
 
