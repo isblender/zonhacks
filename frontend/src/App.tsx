@@ -10,14 +10,16 @@ import {
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 
-// Import page components (we'll create these)
+// Import page components
 import Gallery from './pages/Gallery';
 import SwapRequests from './pages/SwapRequests';
 import Leaderboard from './pages/Leaderboard';
 import Login from './pages/Login';
+import AuthCallback from './pages/AuthCallback';
 import Logo from './components/Logo';
 import ThemeToggle from './components/ThemeToggle';
 import { useTheme } from './contexts/ThemeContext';
+import { useAuth } from './contexts/AuthContext';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -28,12 +30,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark } = useTheme();
+  const { user, logout } = useAuth();
 
-  // Mock user data - in real app this would come from auth context
-  const user = {
-    name: 'John Doe',
-    email: 'john@example.com',
-    swapCount: 12
+  // Default user data if not available
+  const displayUser = user || {
+    name: 'Guest User',
+    email: 'guest@example.com',
+    username: 'guest'
   };
 
   const menuItems = [
@@ -101,18 +104,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               color="white"
               fontWeight="bold"
             >
-              {user.name.charAt(0)}
+              {(displayUser.name || displayUser.username || 'U').charAt(0).toUpperCase()}
             </Box>
             {!isCollapsed && (
               <VStack spacing={1} align="start">
                 <Text fontWeight="semibold" fontSize="sm" color={isDark ? 'white' : 'gray.800'}>
-                  {user.name}
+                  {displayUser.name || displayUser.username || 'User'}
                 </Text>
                 <Text fontSize="xs" color="gray.500">
-                  {user.email}
+                  {displayUser.email || 'No email'}
                 </Text>
                 <Text fontSize="xs" color="gray.500">
-                  {user.swapCount} swaps completed
+                  Authenticated user
                 </Text>
               </VStack>
             )}
@@ -146,7 +149,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
             size="sm"
             w="full"
             justifyContent={isCollapsed ? 'center' : 'flex-start'}
-            onClick={() => navigate('/login')}
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
           >
             {isCollapsed ? '🚪' : 'Logout'}
           </Button>
@@ -165,8 +171,8 @@ const App: React.FC = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
-  // Don't show sidebar on login page
-  const showSidebar = location.pathname !== '/login';
+  // Don't show sidebar on login and auth callback pages
+  const showSidebar = location.pathname !== '/login' && location.pathname !== '/auth/callback';
 
   return (
     <Flex h="100vh" bg={isDark ? 'gray.900' : 'gray.50'}>
@@ -183,6 +189,7 @@ const App: React.FC = () => {
       >
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/" element={<Gallery />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/swap-requests" element={<SwapRequests />} />
