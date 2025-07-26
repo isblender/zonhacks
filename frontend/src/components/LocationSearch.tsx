@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   VStack,
@@ -16,6 +16,8 @@ import {
   Badge,
   IconButton,
   Tooltip,
+  List,
+  ListItem,
 } from '@chakra-ui/react';
 import { LocationService, LocationData } from '../services/locationService';
 import { useTheme } from '../contexts/ThemeContext';
@@ -38,12 +40,83 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
   const [locationPermission, setLocationPermission] = useState<PermissionState | 'unsupported' | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<LocationData[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [suggestionTimeout, setSuggestionTimeout] = useState<number | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
   const { isDark } = useTheme();
 
   useEffect(() => {
     // Check location permission status on mount
     LocationService.getLocationPermissionStatus().then(setLocationPermission);
   }, []);
+
+  useEffect(() => {
+    // Handle clicks outside suggestions dropdown
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const fetchAddressSuggestions = async (query: string) => {
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    try {
+      const suggestions = await LocationService.getAddressSuggestions(query, 5);
+      setAddressSuggestions(suggestions);
+      setShowSuggestions(suggestions.length > 0);
+    } catch (error) {
+      console.error('Failed to fetch address suggestions:', error);
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const handleAddressInputChange = (value: string) => {
+    setAddressInput(value);
+    setLocationError(null);
+
+    // Clear existing timeout
+    if (suggestionTimeout) {
+      clearTimeout(suggestionTimeout);
+    }
+
+    // Set new timeout for debounced search
+    const timeout = window.setTimeout(() => {
+      fetchAddressSuggestions(value);
+    }, 300);
+
+    setSuggestionTimeout(timeout);
+  };
+
+  const handleSuggestionClick = (suggestion: LocationData) => {
+    setCurrentLocation(suggestion);
+    setAddressInput(suggestion.formatted_address || `${suggestion.lat.toFixed(4)}, ${suggestion.lng.toFixed(4)}`);
+    setShowSuggestions(false);
+    setAddressSuggestions([]);
+    onLocationChange(suggestion, radius);
+  };
 
   const handleGetCurrentLocation = async () => {
     setIsGettingLocation(true);
@@ -134,29 +207,101 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
           Search by Location
         </Text>
 
-        {/* Address Input */}
-        <HStack spacing={2}>
-          <Input
-            placeholder="Enter address, city, or zip code..."
-            value={addressInput}
-            onChange={(e) => setAddressInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            bg={isDark ? 'gray.700' : 'white'}
-            borderColor={isDark ? 'gray.600' : 'gray.200'}
-            color={isDark ? 'white' : 'gray.800'}
-            _placeholder={{ color: isDark ? 'gray.400' : 'gray.500' }}
-            isDisabled={isGeocodingAddress}
-          />
-          <Button
-            onClick={handleAddressSearch}
-            isLoading={isGeocodingAddress}
-            loadingText="Finding..."
-            colorScheme="blue"
-            isDisabled={!addressInput.trim()}
-          >
-            Search
-          </Button>
-        </HStack>
+        {/* Address Input with Autocomplete */}
+        <Box position="relative">
+          <HStack spacing={2}>
+            <Input
+              ref={inputRef}
+              placeholder="Enter address, city, or zip code..."
+              value={addressInput}
+              onChange={(e) => handleAddressInputChange(e.target.value)}
+              onKeyPress={handleKeyPress}
+              onFocus={() => {
+                if (addressSuggestions.length > 0) {
+                  setShowSuggestions(true);
+                }
+              }}
+              bg={isDark ? 'gray.700' : 'white'}
+              borderColor={isDark ? 'gray.600' : 'gray.200'}
+              color={isDark ? 'white' : 'gray.800'}
+              _placeholder={{ color: isDark ? 'gray.400' : 'gray.500' }}
+              isDisabled={isGeocodingAddress}
+            />
+            <Button
+              onClick={handleAddressSearch}
+              isLoading={isGeocodingAddress}
+              loadingText="Finding..."
+              colorScheme="blue"
+              isDisabled={!addressInput.trim()}
+            >
+              Search
+            </Button>
+          </HStack>
+
+          {/* Address Suggestions Dropdown */}
+          {showSuggestions && (
+            <Box
+              ref={suggestionsRef}
+              position="absolute"
+              top="100%"
+              left={0}
+              right="80px" // Account for search button width
+              zIndex={1000}
+              bg={isDark ? 'gray.700' : 'white'}
+              border="1px solid"
+              borderColor={isDark ? 'gray.600' : 'gray.200'}
+              borderRadius="md"
+              boxShadow="lg"
+              maxH="200px"
+              overflowY="auto"
+              mt={1}
+            >
+              {isLoadingSuggestions ? (
+                <Box p={3} textAlign="center">
+                  <Spinner size="sm" color="blue.500" />
+                  <Text fontSize="sm" color="gray.500" mt={2}>
+                    Loading suggestions...
+                  </Text>
+                </Box>
+              ) : (
+                <List spacing={0}>
+                  {addressSuggestions.map((suggestion, index) => (
+                    <ListItem
+                      key={index}
+                      p={3}
+                      cursor="pointer"
+                      borderBottom={index < addressSuggestions.length - 1 ? "1px solid" : "none"}
+                      borderColor={isDark ? 'gray.600' : 'gray.200'}
+                      _hover={{
+                        bg: isDark ? 'gray.600' : 'gray.50'
+                      }}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                    >
+                      <VStack align="start" spacing={1}>
+                        <Text
+                          fontSize="sm"
+                          fontWeight="medium"
+                          color={isDark ? 'white' : 'gray.800'}
+                          lineHeight="1.2"
+                        >
+                          {suggestion.formatted_address}
+                        </Text>
+                        {suggestion.city && suggestion.state && (
+                          <Text fontSize="xs" color="gray.500">
+                            📍 {suggestion.city}, {suggestion.state}
+                            {suggestion.country && suggestion.country !== 'United States' && 
+                              `, ${suggestion.country}`
+                            }
+                          </Text>
+                        )}
+                      </VStack>
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Box>
+          )}
+        </Box>
 
         {/* Current Location Button */}
         <HStack justify="space-between">

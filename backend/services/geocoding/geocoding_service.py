@@ -1,8 +1,9 @@
 import requests
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 from core.config import settings
 import math
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,60 @@ class GeocodingService:
         except (KeyError, ValueError, TypeError) as e:
             logger.error(f"Error parsing geocoding response: {e}")
             return None
+    
+    @staticmethod
+    def search_address_suggestions(query: str, limit: int = 5) -> List[Dict]:
+        """
+        Search for address suggestions based on a partial query.
+        Returns list of suggested addresses with their details.
+        """
+        try:
+            # Using Nominatim (OpenStreetMap) - free geocoding service
+            url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                'q': query,
+                'format': 'json',
+                'limit': limit,
+                'addressdetails': 1
+            }
+            headers = {
+                'User-Agent': 'ClothingSwapApp/1.0'  # Required by Nominatim
+            }
+            
+            response = requests.get(url, params=params, headers=headers, timeout=5)
+            response.raise_for_status()
+            
+            data = response.json()
+            suggestions = []
+            
+            for result in data:
+                try:
+                    suggestion = {
+                        'lat': float(result['lat']),
+                        'lng': float(result['lon']),
+                        'formatted_address': result.get('display_name', query),
+                        'city': result.get('address', {}).get('city', ''),
+                        'state': result.get('address', {}).get('state', ''),
+                        'country': result.get('address', {}).get('country', ''),
+                        'type': result.get('type', ''),
+                        'importance': result.get('importance', 0)
+                    }
+                    suggestions.append(suggestion)
+                except (KeyError, ValueError, TypeError) as e:
+                    logger.warning(f"Error parsing suggestion result: {e}")
+                    continue
+            
+            # Sort by importance (higher is better)
+            suggestions.sort(key=lambda x: x.get('importance', 0), reverse=True)
+            
+            return suggestions
+            
+        except requests.RequestException as e:
+            logger.error(f"Address suggestions API request failed: {e}")
+            return []
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error(f"Error parsing address suggestions response: {e}")
+            return []
     
     @staticmethod
     def reverse_geocode(lat: float, lng: float) -> Optional[Dict]:
@@ -140,9 +195,12 @@ class GeocodingService:
             if not location or 'lat' not in location or 'lng' not in location:
                 continue
             
+            # Convert Decimal to float for calculation if needed
+            lat = float(location['lat']) if isinstance(location['lat'], Decimal) else location['lat']
+            lng = float(location['lng']) if isinstance(location['lng'], Decimal) else location['lng']
+            
             distance = GeocodingService.calculate_distance(
-                center_lat, center_lng,
-                location['lat'], location['lng']
+                center_lat, center_lng, lat, lng
             )
             
             if distance <= radius_miles:
@@ -154,3 +212,23 @@ class GeocodingService:
         filtered_listings.sort(key=lambda x: x.get('distance_miles', float('inf')))
         
         return filtered_listings
+    
+    @staticmethod
+    def convert_coordinates_for_dynamodb(location_data: Dict) -> Dict:
+        """
+        Convert float coordinates to Decimal for DynamoDB storage.
+        DynamoDB requires Decimal types for numbers.
+        """
+        if not location_data:
+            return location_data
+        
+        converted_data = location_data.copy()
+        
+        # Convert lat/lng to Decimal if they exist
+        if 'lat' in converted_data and isinstance(converted_data['lat'], (int, float)):
+            converted_data['lat'] = Decimal(str(converted_data['lat']))
+        
+        if 'lng' in converted_data and isinstance(converted_data['lng'], (int, float)):
+            converted_data['lng'] = Decimal(str(converted_data['lng']))
+        
+        return converted_data

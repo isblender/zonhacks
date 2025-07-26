@@ -108,6 +108,36 @@ export class LocationService {
   }
 
   /**
+   * Get address suggestions based on partial query
+   */
+  static async getAddressSuggestions(query: string, limit: number = 5): Promise<LocationData[]> {
+    try {
+      if (query.length < 3) {
+        return [];
+      }
+
+      const response = await fetch(`${this.API_BASE_URL}/listings/address-suggestions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query, limit }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to get address suggestions');
+      }
+
+      const data = await response.json();
+      return data.suggestions || [];
+    } catch (error) {
+      console.error('Address suggestions error:', error);
+      return [];
+    }
+  }
+
+  /**
    * Reverse geocode coordinates to get address
    */
   static async reverseGeocode(lat: number, lng: number): Promise<Partial<LocationData>> {

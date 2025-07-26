@@ -123,6 +123,10 @@ async def create_listing(
                     'country': geocoded.get('country', '')
                 }
         
+        # Convert coordinates to Decimal for DynamoDB storage
+        if location_data:
+            location_data = GeocodingService.convert_coordinates_for_dynamodb(location_data)
+        
         tags_data = []
         if tags:
             try:
@@ -605,6 +609,40 @@ async def reverse_geocode_coordinates(request: dict):
     except Exception as e:
         logger.error(f"Error reverse geocoding coordinates: {e}")
         raise HTTPException(status_code=500, detail=f"Error reverse geocoding: {str(e)}")
+
+@router.post("/address-suggestions")
+async def get_address_suggestions(request: dict):
+    """
+    Get address suggestions based on a partial query.
+    
+    Expected payload:
+    {
+        "query": "123 Main St, Seat",
+        "limit": 5
+    }
+    """
+    try:
+        query = request.get("query")
+        if not query or len(query.strip()) < 3:
+            raise HTTPException(status_code=400, detail="Query must be at least 3 characters long")
+        
+        limit = request.get("limit", 5)
+        if not isinstance(limit, int) or limit < 1 or limit > 10:
+            limit = 5
+        
+        suggestions = GeocodingService.search_address_suggestions(query.strip(), limit)
+        
+        return {
+            "success": True,
+            "suggestions": suggestions,
+            "count": len(suggestions)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting address suggestions: {e}")
+        raise HTTPException(status_code=500, detail=f"Error getting address suggestions: {str(e)}")
 
 @router.get("/user/{user_id}")
 async def get_user_listings(user_id: str):

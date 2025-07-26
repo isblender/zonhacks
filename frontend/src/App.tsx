@@ -12,6 +12,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 
 // Import page components
 import Gallery from './pages/Gallery';
+import CreateListing from './pages/CreateListing';
 import SwapRequests from './pages/SwapRequests';
 import Leaderboard from './pages/Leaderboard';
 import Login from './pages/Login';
@@ -238,6 +239,7 @@ const App: React.FC = () => {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/" element={<Gallery />} />
           <Route path="/gallery" element={<Gallery />} />
+          <Route path="/create-listing" element={<CreateListing />} />
           <Route path="/swap-requests" element={<SwapRequests />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
         </Routes>
